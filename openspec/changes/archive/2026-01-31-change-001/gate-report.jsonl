@@ -1,0 +1,1 @@
+{"timestamp":1769863332522,"gate":"validate","changeId":"change-001","result":"fail","details":"Command failed: openspec validate change-001 --strict --no-interactive\nUnknown item 'change-001'\n"}
