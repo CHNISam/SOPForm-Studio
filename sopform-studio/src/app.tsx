@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
 import { Sidebar } from './components/Sidebar';
 import { FormView } from './components/FormView';
 import { HistoryModal } from './components/HistoryModal';
+import { CompanionApp } from './companion/CompanionApp';
 import type { AppData, Project, StageId, Snapshot } from './types';
 import { FORM_REGISTRY, STAGES, STAGE_ORDER } from './forms';
 import { loadLocal, saveLocal, loadFromFile, saveToFile, getEmptyData } from './storage';
@@ -10,6 +11,7 @@ import type { FileSystemFileHandle } from './storage';
 import { validateStage, exportStage, exportProject } from './export';
 
 export function App() {
+  const [mode, setMode] = useState<'studio' | 'companion'>('studio');
   const [data, setData] = useState<AppData>(getEmptyData());
   const [activeProjectId, setActiveProjectId] = useState<string | undefined>();
   const [activeStage, setActiveStage] = useState<StageId>('req');
@@ -227,88 +229,121 @@ export function App() {
 
   return (
     <div id="app">
-      <Sidebar 
-        projects={data.projects} 
-        activeId={activeProjectId} 
-        onSelect={(id) => { setActiveProjectId(id); saveData({...data, activeProjectId: id}); }}
-        onCreate={createProject}
-        onRename={renameProject}
-        onDelete={deleteProject}
-      />
-      <div class="main">
-        <div class="top-bar">
-          {STAGE_ORDER.map(s => (
-            <div 
-              key={s} 
-              class={`tab ${activeStage === s ? 'active' : ''}`}
-              onClick={() => setActiveStage(s)}
-            >
-              {STAGES[s]}
-            </div>
-          ))}
-        </div>
-        
-        <div class="editor-area">
-          {activeProject ? (
-            <FormView 
-              stageId={activeStage}
-              fields={FORM_REGISTRY[activeStage]}
-              data={activeProject.stages[activeStage] || {}}
-              onChange={updateField}
-            />
-          ) : (
-             <div style={{marginTop: 50, color: '#999'}}>Select or create a project to start.</div>
-          )}
-        </div>
-
-        <div class="actions-bar">
-            {fileHandle && <div class="status-indicator">📄 {fileHandle.name}</div>}
-             {!fileHandle && <div class="status-indicator">💾 Local Storage</div>}
-            
-            <button class="btn btn-sm" onClick={handleFileSelect} title="Use File System">📂 Data File</button>
-            <button class="btn btn-sm" onClick={exportJSON}>Export JSON</button>
-            <label class="btn btn-sm" style={{display:'inline-block', marginBottom:0}}>
-              Import JSON
-              <input type="file" accept=".json" onChange={importJSON} style={{display:'none'}} />
-            </label>
-            <div style={{width: 1, background:'#ddd', height: 20, margin:'0 4px'}}></div>
-            {activeProject && (
-              <>
-                <button class="btn" onClick={takeSnapshot}>Save Snapshot</button>
-                <button class="btn" onClick={() => setShowHistory(true)}>History</button>
-                <button class="btn" onClick={handleCopyStage}>Copy Stage</button>
-                <button class="btn btn-primary" onClick={handleCopyProject}>Copy Project</button>
-              </>
-            )}
-        </div>
+      {/* Mode Toggle */}
+      <div style={{ 
+        position: 'fixed', 
+        top: 10, 
+        right: 10, 
+        zIndex: 1000,
+        background: 'white',
+        padding: '4px',
+        borderRadius: '8px',
+        border: '1px solid #ddd',
+        display: 'flex',
+        gap: '4px'
+      }}>
+        <button 
+          class={`btn btn-sm ${mode === 'studio' ? 'btn-primary' : ''}`}
+          onClick={() => setMode('studio')}
+        >
+          Studio
+        </button>
+        <button 
+          class={`btn btn-sm ${mode === 'companion' ? 'btn-primary' : ''}`}
+          onClick={() => setMode('companion')}
+        >
+          Companion
+        </button>
       </div>
 
-      {showHistory && activeProject && (
-        <HistoryModal 
-          snapshots={activeProject.history} 
-          onClose={() => setShowHistory(false)}
-          onRestore={restoreSnapshot}
-        />
-      )}
+      {mode === 'companion' ? (
+        <CompanionApp />
+      ) : (
+        <>
+          <Sidebar 
+            projects={data.projects} 
+            activeId={activeProjectId} 
+            onSelect={(id) => { setActiveProjectId(id); saveData({...data, activeProjectId: id}); }}
+            onCreate={createProject}
+            onRename={renameProject}
+            onDelete={deleteProject}
+          />
+          <div class="main">
+            <div class="top-bar">
+              {STAGE_ORDER.map(s => (
+                <div 
+                  key={s} 
+                  class={`tab ${activeStage === s ? 'active' : ''}`}
+                  onClick={() => setActiveStage(s)}
+                >
+                  {STAGES[s]}
+                </div>
+              ))}
+            </div>
+            
+            <div class="editor-area">
+              {activeProject ? (
+                <FormView 
+                  stageId={activeStage}
+                  fields={FORM_REGISTRY[activeStage]}
+                  data={activeProject.stages[activeStage] || {}}
+                  onChange={updateField}
+                />
+              ) : (
+                 <div style={{marginTop: 50, color: '#999'}}>Select or create a project to start.</div>
+              )}
+            </div>
 
-      {missingFields && (
-        <div class="modal-overlay" onClick={() => setMissingFields(null)}>
-          <div class="modal" onClick={e => e.stopPropagation()}>
-             <h3 class="modal-title" style={{color: 'var(--danger)'}}>Missing Required Fields</h3>
-             <div class="modal-content">
-               <p>The following fields are required before copying:</p>
-               <ul class="missing-list">
-                 {missingFields.map((f, i) => <li key={i}>{f}</li>)}
-               </ul>
-             </div>
-             <div class="modal-footer">
-               <button class="btn btn-primary" onClick={() => setMissingFields(null)}>OK</button>
-             </div>
+            <div class="actions-bar">
+                {fileHandle && <div class="status-indicator">📄 {fileHandle.name}</div>}
+                 {!fileHandle && <div class="status-indicator">💾 Local Storage</div>}
+                
+                <button class="btn btn-sm" onClick={handleFileSelect} title="Use File System">📂 Data File</button>
+                <button class="btn btn-sm" onClick={exportJSON}>Export JSON</button>
+                <label class="btn btn-sm" style={{display:'inline-block', marginBottom:0}}>
+                  Import JSON
+                  <input type="file" accept=".json" onChange={importJSON} style={{display:'none'}} />
+                </label>
+                <div style={{width: 1, background:'#ddd', height: 20, margin:'0 4px'}}></div>
+                {activeProject && (
+                  <>
+                    <button class="btn" onClick={takeSnapshot}>Save Snapshot</button>
+                    <button class="btn" onClick={() => setShowHistory(true)}>History</button>
+                    <button class="btn" onClick={handleCopyStage}>Copy Stage</button>
+                    <button class="btn btn-primary" onClick={handleCopyProject}>Copy Project</button>
+                  </>
+                )}
+            </div>
           </div>
-        </div>
-      )}
 
-      {toast && <div class={`toast ${toast.type === 'error' ? 'error' : ''}`}>{toast.msg}</div>}
+          {showHistory && activeProject && (
+            <HistoryModal 
+              snapshots={activeProject.history} 
+              onClose={() => setShowHistory(false)}
+              onRestore={restoreSnapshot}
+            />
+          )}
+
+          {missingFields && (
+            <div class="modal-overlay" onClick={() => setMissingFields(null)}>
+              <div class="modal" onClick={e => e.stopPropagation()}>
+                 <h3 class="modal-title" style={{color: 'var(--danger)'}}>Missing Required Fields</h3>
+                 <div class="modal-content">
+                   <p>The following fields are required before copying:</p>
+                   <ul class="missing-list">
+                     {missingFields.map((f, i) => <li key={i}>{f}</li>)}
+                   </ul>
+                 </div>
+                 <div class="modal-footer">
+                   <button class="btn btn-primary" onClick={() => setMissingFields(null)}>OK</button>
+                 </div>
+              </div>
+            </div>
+          )}
+
+          {toast && <div class={`toast ${toast.type === 'error' ? 'error' : ''}`}>{toast.msg}</div>}
+        </>
+      )}
     </div>
   );
 }
