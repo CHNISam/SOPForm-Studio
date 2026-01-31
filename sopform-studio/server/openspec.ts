@@ -24,16 +24,21 @@ export interface ChangeStatus {
 
 // List all changes from openspec/changes/*
 export async function getChanges(openspecRoot: string): Promise<string[]> {
-  const changesDir = path.join(openspecRoot, 'changes');
+  const changesDir = path.resolve(openspecRoot, 'changes');
+  
+  console.log(`[getChanges] Resolved OPENSPEC_ROOT: ${openspecRoot}`);
+  console.log(`[getChanges] Scanning directory: ${changesDir}`);
   
   try {
     const entries = await fs.readdir(changesDir, { withFileTypes: true });
     const changes = entries
       .filter(e => e.isDirectory() && e.name !== 'archive')
       .map(e => e.name);
+    
+    console.log(`[getChanges] Directory listing result:`, changes);
     return changes;
-  } catch (error) {
-    console.error('[getChanges] Error:', error);
+  } catch (error: any) {
+    console.error(`[getChanges] Error reading ${changesDir}:`, error.message);
     return [];
   }
 }

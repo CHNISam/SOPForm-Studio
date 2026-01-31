@@ -13,11 +13,11 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json());
 
-// Environment config
-const OPENSPEC_ROOT = process.env.OPENSPEC_ROOT || path.resolve(process.cwd(), '../openspec');
+// Environment config - prioritize env, fallback to relative from project root
+const OPENSPEC_ROOT = process.env.OPENSPEC_ROOT || path.resolve(__dirname, '../../openspec');
 const VERIFY_CMD = process.env.VERIFY_CMD || '';
 
-console.log(`[Server] OPENSPEC_ROOT: ${OPENSPEC_ROOT}`);
+console.log(`[Server] Final Resolved OPENSPEC_ROOT: ${OPENSPEC_ROOT}`);
 console.log(`[Server] VERIFY_CMD: ${VERIFY_CMD || '(not configured)'}`);
 
 // GET /api/changes - List all changes
